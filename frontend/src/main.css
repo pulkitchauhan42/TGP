@@ -1,0 +1,26 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* GLOBAL STYLES */
+body {
+    @apply bg-primary text-white font-serif;
+  }
+  
+  /* HEADERS */
+  h1 {
+    @apply text-4xl font-bold text-secondary tracking-wide;
+  }
+  
+  h2 {
+    @apply text-3xl font-semibold text-secondary;
+  }
+  
+  /* BUTTONS */
+  .btn {
+    @apply bg-secondary text-primary px-6 py-3 rounded-lg font-sans text-lg transition-all duration-300;
+  }
+  
+  .btn:hover {
+    @apply bg-white text-secondary shadow-lg;
+  }

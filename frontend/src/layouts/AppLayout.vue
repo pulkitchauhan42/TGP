@@ -1,38 +1,29 @@
 <template>
   <div>
-    <header>
-      <nav>
-        <router-link to="/">Home</router-link>
-        <router-link to="/about">About</router-link>
-        <router-link to="/booking">Booking</router-link>
-        <router-link to="/contact">Contact</router-link>
+    <header class="bg-primary py-4 shadow-md">
+      <nav class="flex justify-between items-center px-8">
+        <h1 class="text-secondary text-3xl font-serif">That Golf Place</h1>
+        <div class="space-x-6">
+          <router-link to="/" class="nav-link">Home</router-link>
+          <router-link to="/about" class="nav-link">About</router-link>
+          <router-link to="/booking" class="nav-link">Booking</router-link>
+          <router-link to="/contact" class="nav-link">Contact</router-link>
+        </div>
       </nav>
     </header>
-    <main>
+
+    <main class="p-6">
       <router-view></router-view>
     </main>
-    <footer>
-      <p>&copy; 2025 That Golf Place</p>
+
+    <footer class="bg-secondary text-primary py-6 text-center">
+      <p>&copy; 2025 That Golf Place - Premium Golf Simulation</p>
     </footer>
   </div>
 </template>
 
 <style>
-header {
-  background: #333;
-  padding: 1rem;
-  text-align: center;
-}
-nav a {
-  color: white;
-  margin: 0 15px;
-  text-decoration: none;
-}
-footer {
-  margin-top: 20px;
-  text-align: center;
-  padding: 1rem;
-  background: #222;
-  color: white;
+.nav-link {
+  @apply text-lg text-white hover:text-secondary transition duration-300;
 }
 </style>
