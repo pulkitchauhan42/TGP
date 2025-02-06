@@ -48,9 +48,13 @@ async def get_available_slots(date: str = Query(...)):
 
     # Remove booked slots from available slots
     available_slots = []
+    now_epoch = int(datetime.now().timestamp())  # Get current time in epoch
+
     for slot in all_slots:
         epoch_time = convert_to_epoch(date, slot)
-        if epoch_time not in booked_times:
+
+        # Ensure past times are also removed
+        if epoch_time not in booked_times and epoch_time > now_epoch:
             available_slots.append(slot)
 
     print(f"🚀 DEBUG: Booked Epoch Times: {booked_times}")
@@ -66,20 +70,34 @@ async def book_slot(
     duration: float = Form(...)
 ):
     """Book a time slot if it's available"""
-    
+    now_epoch = int(datetime.now().timestamp())  # Get current timestamp
+    epoch_start = convert_to_epoch(date, time)
+
+    # **Prevent Past Bookings**
+    if epoch_start < now_epoch:
+        raise HTTPException(status_code=400, detail="Cannot book a past time.")
+
     if date not in booked_slots:
         booked_slots[date] = []
 
-    epoch_start = convert_to_epoch(date, time)
-    
+    # **Check for overlapping bookings**
+    epoch_end = epoch_start + int(duration * 3600)  # Convert hours to seconds
+
     for booking in booked_slots[date]:
         existing_start = booking["epoch_start"]
         existing_end = existing_start + int(booking["duration"] * 3600)
 
-        if epoch_start < existing_end:
+        # **Check for overlap**
+        if not (epoch_end <= existing_start or epoch_start >= existing_end):
             raise HTTPException(status_code=400, detail="Time slot is already booked")
 
-    booked_slots[date].append({"date": date, "time": time, "duration": duration, "epoch_start": epoch_start})
+    # Store the booking
+    booked_slots[date].append({
+        "date": date,
+        "time": time,
+        "duration": duration,
+        "epoch_start": epoch_start
+    })
     
     print(f"✅ DEBUG: Stored Booking -> {booked_slots[date]}")
 

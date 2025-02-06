@@ -7,13 +7,13 @@
       <!-- Select Date -->
       <div class="mb-4">
         <label for="date" class="block text-lg font-semibold text-gray-700 mb-1">Select Date:</label>
-        <input
-          type="date"
-          id="date"
+        <Datepicker
           v-model="booking.date"
-          @change="fetchAvailableSlots"
-          class="border border-gray-300 p-2 rounded w-full text-black"
-          required
+          :min-date="new Date()" 
+          :enable-time-picker="false"
+          auto-apply
+          class="datepicker-custom"
+          @update:model-value="fetchAvailableSlots"
         />
       </div>
 
@@ -68,27 +68,38 @@
 <script>
 import { ref, watch } from "vue";
 import axios from "axios";
+import Datepicker from "@vuepic/vue-datepicker";
+import "@vuepic/vue-datepicker/dist/main.css";
 
 export default {
+  components: {
+    Datepicker, // Register Vue3 Datepicker Component
+  },
   setup() {
     const booking = ref({
-      date: "",
+      date: new Date(),
       time: "",
       duration: 1,
     });
 
     const availableTimes = ref([]);
 
+    // Format date to YYYY-MM-DD before sending to backend
+    const formatDate = (date) => {
+      return date.toISOString().split("T")[0];
+    };
+
     // Fetch available slots from backend and update UI
     const fetchAvailableSlots = async () => {
       if (!booking.value.date) return;
       try {
         console.log("🔄 Fetching available slots...");
-        const response = await axios.get(`http://localhost:8000/api/booked-slots?date=${booking.value.date}`);
         
-        // **Force Vue to refresh dropdown**
+        const formattedDate = formatDate(booking.value.date); // Format date
+        const response = await axios.get(`http://localhost:8000/api/booked-slots?date=${formattedDate}`);
+        
         availableTimes.value = [];
-        await new Promise(resolve => setTimeout(resolve, 50)); // Small delay to force reactivity
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay for reactivity
         availableTimes.value = response.data.availableSlots || [];
 
         console.log("✅ Updated available times:", availableTimes.value);
@@ -108,8 +119,10 @@ export default {
           return;
         }
 
+        const formattedDate = formatDate(booking.value.date);
+
         const formData = new URLSearchParams();
-        formData.append("date", booking.value.date);
+        formData.append("date", formattedDate);
         formData.append("time", booking.value.time);
         formData.append("duration", booking.value.duration.toString());
 
@@ -154,5 +167,14 @@ input, select {
 }
 button {
   @apply w-full bg-green-600 text-white py-2 rounded-lg font-bold hover:bg-green-700;
+}
+
+/* Custom styles for Datepicker */
+.datepicker-custom {
+  width: 100%;
+  border: 1px solid #d1d5db;
+  border-radius: 0.375rem;
+  padding: 0.5rem;
+  background-color: white;
 }
 </style>
