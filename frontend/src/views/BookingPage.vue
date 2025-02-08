@@ -1,21 +1,8 @@
 <template>
   <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold text-center mb-6">Book Your Simulator Time</h1>
 
-    <!-- Member vs. Non-Member Selection Modal -->
-    <div v-if="showMemberModal" class="modal-overlay">
-      <div class="modal-content">
-        <h2 class="text-2xl font-bold mb-4 text-gray-800">Are you a member?</h2>
-        <p class="text-gray-600 mb-6">Members can book without payment. Non-members must pay after booking.</p>
-
-        <div class="flex flex-col gap-4 w-full">
-          <button @click="selectMember(true)" class="btn-member">I’m a Member</button>
-          <button @click="selectMember(false)" class="btn-non-member">I’m Not a Member</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Booking Form (Shows only if membership selection is completed) -->
-    <form v-if="!showMemberModal" @submit.prevent="submitBooking" class="max-w-lg mx-auto bg-white p-6 shadow-lg rounded-lg">
+    <form @submit.prevent="confirmBooking" class="max-w-lg mx-auto bg-white p-6 shadow-lg rounded-lg">
       
       <!-- Select Location -->
       <div class="mb-4">
@@ -28,7 +15,15 @@
       <!-- Select Date -->
       <div class="mb-4">
         <label for="date" class="block text-lg font-semibold text-gray-700 mb-1">Select Date:</label>
-        <input type="date" id="date" v-model="booking.date" @change="fetchAvailableSlots" :min="minDate" class="border border-gray-300 p-2 rounded w-full text-black" required />
+        <input 
+          type="date" 
+          id="date" 
+          v-model="booking.date" 
+          @change="fetchAvailableSlots" 
+          :min="minDate" 
+          class="border border-gray-300 p-2 rounded w-full text-black" 
+          required 
+        />
       </div>
 
       <!-- Select Time -->
@@ -44,11 +39,18 @@
       <div class="mb-4">
         <label for="duration" class="block text-lg font-semibold text-gray-700 mb-1">Duration (in hours):</label>
         <select id="duration" v-model="booking.duration" class="border border-gray-300 p-2 rounded w-full text-black" required>
-          <option v-for="hour in [1, 1.5, 2, 2.5, 3, 3.5, 4]" :key="hour" :value="hour">{{ hour }} hour{{ hour > 1 ? 's' : '' }}</option>
+          <option v-for="hour in [1, 1.5, 2, 2.5, 3, 3.5, 4]" :key="hour" :value="hour">
+            {{ hour }} hour{{ hour > 1 ? 's' : '' }}
+          </option>
         </select>
       </div>
 
-      <!-- Buttons: Confirm Booking & Back to Member Selection -->
+      <!-- Show Remaining Hours for Members -->
+      <p v-if="isAuthenticated && isMember" class="text-center text-green-700 font-semibold">
+        You have {{ memberHours }} hours remaining.
+      </p>
+
+      <!-- Confirm Booking Button -->
       <div class="flex justify-between mt-6">
         <button @click="goBackToSelection" type="button" class="btn-back">← Back</button>
         <button type="submit" class="btn-confirm">Confirm Booking →</button>
@@ -66,7 +68,7 @@
 </template>
 
 <script>
-import { ref, watch } from "vue";
+import { ref, watch, onMounted } from "vue";
 import axios from "axios";
 import { useRouter } from "vue-router";
 
@@ -74,27 +76,45 @@ export default {
   setup() {
     const router = useRouter();
     const booking = ref({
-      location: "Main Facility",  // Default location
+      location: "Main Facility", 
       date: "",
       time: "",
       duration: 1,
     });
 
-    const locations = ref(["Main Facility - 123 Golf Club Ln, Chicago, IL 60601"]); // Expandable Locations ADD MORE LOCS HERE
+    const locations = ref(["Main Facility - 123 Golf Club Ln, Chicago, IL 60601"]);
     const availableTimes = ref([]);
-    const showMemberModal = ref(true);
-    const isMember = ref(null);
     const minDate = ref(new Date().toISOString().split("T")[0]);
+    const isAuthenticated = ref(false);
+    const isMember = ref(false);
+    const memberHours = ref(0);
 
-    const selectMember = (memberStatus) => {
-      isMember.value = memberStatus;
-      showMemberModal.value = false;
+    // Fetch user authentication status
+    const fetchUserStatus = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) {
+        isAuthenticated.value = false;
+        return;
+      }
+      try {
+        const response = await axios.get("http://localhost:8000/api/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        isAuthenticated.value = true;
+        isMember.value = response.data.is_member;
+        memberHours.value = response.data.member_hours;
+
+        console.log("🟢 DEBUG: User authenticated", response.data);
+      } catch (error) {
+        console.error("❌ Error fetching user status:", error);
+        isAuthenticated.value = false;
+      }
     };
 
-    const goBackToSelection = () => {
-      showMemberModal.value = true;
-    };
+    onMounted(fetchUserStatus);
 
+    // Fetch available slots
     const fetchAvailableSlots = async () => {
       if (!booking.value.date) return;
       try {
@@ -109,47 +129,77 @@ export default {
     };
 
     watch(() => booking.value.date, fetchAvailableSlots);
-    watch(() => booking.value.location, fetchAvailableSlots); // Update when location changes
+    watch(() => booking.value.location, fetchAvailableSlots);
 
-    const submitBooking = async () => {
-      try {
-        const formData = new URLSearchParams();
-        formData.append("location", booking.value.location);
-        formData.append("date", booking.value.date);
-        formData.append("time", booking.value.time);
-        formData.append("duration", booking.value.duration.toString());
+    // Confirm Booking
+    const confirmBooking = async () => {
+  console.log("🟢 DEBUG: Confirming booking with details:", booking.value);
 
-        const response = await axios.post("http://localhost:8000/api/book", formData);
+  if (!isAuthenticated.value) {
+    console.warn("🔴 User is not authenticated! Redirecting to login...");
+    router.push({
+      path: "/login",
+      query: { ...booking.value, userType: "non-member" },
+    });
+    return;
+  }
 
-        alert(response.data.message);
+  if (isMember.value) {
+    if (memberHours.value < booking.value.duration) {
+      alert("Not enough allocated hours. Redirecting to payment.");
+      router.push({
+        path: "/payment",
+        query: { ...booking.value },
+      });
+      return;
+    }
+  }
 
-        if (!isMember.value) {
-          router.push({ path: "/payment", query: {
-          location: booking.value.location, // ✅ Pass selected location dynamically
-          date: booking.value.date,
-          time: booking.value.time,
-          duration: booking.value.duration,
-        }, });
-        } else {
-          alert("Booking confirmed! Members do not need payment.");
-        }
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      alert("You are not logged in. Please sign in to book.");
+      return;
+    }
 
-        setTimeout(fetchAvailableSlots, 500);
-      } catch (error) {
-        console.error("Booking error:", error);
-        alert(error.response?.data?.detail || "An error occurred");
-      }
-    };
+    console.log("🟢 DEBUG: Sending booking request to backend...");
+
+    // 🔹 Convert payload to URLSearchParams (required for FastAPI Form data)
+    const requestData = new URLSearchParams();
+    requestData.append("location", booking.value.location);
+    requestData.append("date", booking.value.date);
+    requestData.append("time", booking.value.time);
+    requestData.append("duration", booking.value.duration.toString());
+
+    console.log("📡 Sending Form Data:", requestData.toString());
+
+    const response = await axios.post(
+      "http://localhost:8000/api/book",
+      requestData, // 🔹 Correct format for FastAPI Form
+      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" } }
+    );
+
+    console.log("✅ Booking success response:", response.data);
+    alert(response.data.message);
+
+    fetchUserStatus(); // Update member hours
+  } catch (error) {
+    console.error("❌ Booking error:", error.response?.data || error);
+    alert(error.response?.data?.detail || "An error occurred while booking.");
+  }
+};
+
+
 
     return {
       booking,
       locations,
       availableTimes,
+      isAuthenticated,
+      isMember,
+      memberHours,
       fetchAvailableSlots,
-      submitBooking,
-      showMemberModal,
-      selectMember,
-      goBackToSelection,
+      confirmBooking,
       minDate,
     };
   },
@@ -157,57 +207,17 @@ export default {
 </script>
 
 
+
 <style scoped>
 .container {
   max-width: 600px;
 }
-label {
-  @apply text-lg font-semibold text-gray-700 block mb-1;
-}
-input, select {
-  @apply text-black bg-white border-gray-300 focus:border-primary focus:ring-primary focus:outline-none;
-  padding: 0.5rem;
-  border-radius: 0.375rem;
-  width: 100%;
-}
-button {
-  @apply py-3 rounded-lg font-bold;
-}
 
-/* Member Selection Buttons */
-.btn-member {
-  @apply bg-green-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-green-700 transition;
-}
-
-.btn-non-member {
-  @apply bg-blue-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-blue-700 transition;
-}
-
-/* Back Button */
-.btn-back {
-  @apply bg-gray-400 text-white py-3 px-6 rounded-lg text-lg font-bold hover:bg-gray-500 transition;
-}
-
-/* Confirm Booking Button */
 .btn-confirm {
   @apply bg-green-600 text-white py-3 px-6 rounded-lg text-lg font-bold hover:bg-green-700 transition;
 }
 
-/* Modal Styling */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 50;
-}
-.modal-content {
-  background: white;
-  padding: 30px;
-  border-radius: 12px;
-  text-align: center;
-  box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+.btn-back {
+  @apply bg-gray-400 text-white py-3 px-6 rounded-lg text-lg font-bold hover:bg-gray-500 transition;
 }
 </style>

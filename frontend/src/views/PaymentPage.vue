@@ -13,7 +13,7 @@
     </div>
 
     <!-- Payment Form -->
-    <form @submit.prevent="submitPayment" class="max-w-lg mx-auto bg-white p-6 shadow-lg rounded-lg border border-gray-300 mt-6">
+    <form v-if="!isMember" @submit.prevent="submitPayment" class="max-w-lg mx-auto bg-white p-6 shadow-lg rounded-lg border border-gray-300 mt-6">
       <h2 class="text-xl font-semibold mb-4 text-gray-800">Payment Details</h2>
 
       <!-- User Info (For Receipt) -->
@@ -38,6 +38,11 @@
         Pay ${{ totalPrice }}
       </button>
     </form>
+
+    <!-- If user is a member, show confirmation instead of payment form -->
+    <div v-if="isMember" class="text-center mt-6">
+      <p class="text-green-700 font-bold">✅ Your booking has been confirmed! No payment is required for members.</p>
+    </div>
   </div>
 </template>
 
@@ -57,8 +62,9 @@ export default {
     const bookingDuration = ref(1);
     const totalPrice = ref(50);
     const waiverAgreed = ref(false);
-    const userEmail = ref(""); // User email for receipt
-    const userName = ref(""); // User full name for receipt
+    const userEmail = ref("");
+    const userName = ref("");
+    const isMember = ref(false); // Track membership status
 
     onMounted(() => {
       bookingLocation.value = route.query.location || "That Golf Place - Main Location";
@@ -66,6 +72,21 @@ export default {
       bookingTime.value = route.query.time || "";
       bookingDuration.value = parseFloat(route.query.duration) || 1;
       totalPrice.value = bookingDuration.value * 50;
+
+      // Retrieve user authentication & membership status
+      const token = localStorage.getItem("authToken");
+      if (token) {
+        axios
+          .get("http://localhost:8000/api/user-status", {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+          .then((response) => {
+            isMember.value = response.data.isMember;
+          })
+          .catch(() => {
+            isMember.value = false;
+          });
+      }
     });
 
     const submitPayment = async () => {
@@ -77,20 +98,20 @@ export default {
       console.log("✅ Payment Successful! Redirecting...");
 
       // Send Receipt Email
-      try {
-        await axios.post("http://localhost:8000/api/send-receipt", new URLSearchParams({
-          email: userEmail.value,
-          name: userName.value,
-          location: bookingLocation.value,
-          date: bookingDate.value,
-          time: bookingTime.value,
-          duration: bookingDuration.value.toString(),
-          total: totalPrice.value.toString(),
-        }));
-        console.log("📧 Receipt email sent!");
-      } catch (error) {
-        console.error("❌ Error sending receipt email:", error);
-      }
+      // try {
+      //  await axios.post("http://localhost:8000/api/send-receipt", new URLSearchParams({
+      //    email: userEmail.value,
+      //    name: userName.value,
+      //    location: bookingLocation.value,
+      //    date: bookingDate.value,
+      //    time: bookingTime.value,
+      //    duration: bookingDuration.value.toString(),
+      //    total: totalPrice.value.toString(),
+      //  }));
+      //  console.log("📧 Receipt email sent!");
+      ///} catch (error) {
+      //  console.error("❌ Error sending receipt email:", error);
+      // }
 
       // Redirect to Payment Success Page
       router.push({
@@ -113,6 +134,7 @@ export default {
       waiverAgreed,
       userEmail,
       userName,
+      isMember,
       submitPayment,
     };
   },
