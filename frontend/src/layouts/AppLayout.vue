@@ -1,8 +1,13 @@
 <template>
   <div>
-    <header class="bg-primary py-4 shadow-md">
+    <!-- Header (Now Fixed at the Top) -->
+    <header class="bg-primary bg-opacity-10 backdrop-blur-md py-4 shadow-md fixed top-0 left-0 w-full z-50 transition duration-300">
       <nav class="flex justify-between items-center px-8 relative">
-        <h1 class="text-secondary text-3xl font-serif">That Golf Place</h1>
+        <!-- Logo & Site Name -->
+        <router-link to="/" class="flex items-center space-x-3">
+          <img src="/logo.png" alt="That Golf Place Logo" class="h-12">
+          <h1 class="text-secondary text-3xl font-serif">That Golf Place</h1>
+        </router-link>
 
         <!-- Navigation Links -->
         <div class="flex space-x-6 items-center">
@@ -11,17 +16,21 @@
           <router-link to="/booking" class="nav-link">Booking</router-link>
 
           <!-- Memberships Dropdown -->
-          <div class="relative group">
-            <button @click="toggleDropdown" class="nav-link flex items-center">
+          <div 
+            class="relative group"
+            @mouseenter="dropdownOpen = true"
+            @mouseleave="startCloseTimer"
+          >
+            <button class="nav-link flex items-center">
               Memberships <span class="ml-1">▼</span>
             </button>
 
             <!-- Dropdown Menu -->
             <div
-              class="absolute left-0 mt-2 w-56 bg-white shadow-lg rounded-lg z-50"
-              v-show="dropdownOpen"
+              class="absolute left-0 mt-2 w-56 bg-white shadow-lg rounded-lg z-50 transition-opacity duration-300"
               @mouseenter="cancelCloseTimer"
               @mouseleave="startCloseTimer"
+              :class="{ 'opacity-100 visible scale-100': dropdownOpen, 'opacity-0 invisible scale-95': !dropdownOpen }"
             >
               <router-link to="/memberships" class="dropdown-link">Membership Overview</router-link>
               <router-link to="/memberships/individual" class="dropdown-link">Individual Memberships</router-link>
@@ -35,27 +44,29 @@
       </nav>
     </header>
 
-    <main class="p-6">
+    <!-- Main Content (Adds Padding to Prevent Content Overlap) -->
+    <main class="pt-20 p-6">
       <router-view></router-view>
     </main>
 
-    <footer class="bg-cover bg-center py-12 text-white" style="background-image: url('/public/grass-texture.jpg');">
-      <div class="container mx-auto flex flex-col md:flex-row justify-between items-center px-8">
+    <!-- Footer -->
+    <footer class="bg-primary bg-center py-12 text-white" style="background-image: url('/grass.png');">
+      <div class="container mx-auto grid grid-cols-1 md:grid-cols-5 gap-8 px-8 items-start">
         
         <!-- Logo -->
-        <div class="flex-1 flex justify-center md:justify-start">
-          <img src="/public/logo.png" alt="That Golf Place Logo" class="h-16">
+        <div class="md:col-span-1 flex justify-center md:justify-start">
+          <img src="/logo.png" alt="That Golf Place Logo" class="h-16">
         </div>
         
         <!-- Address -->
-        <div class="flex-1 text-center">
+        <div class="md:col-span-1 text-center md:text-left">
           <h2 class="text-xl font-bold">Visit Us</h2>
           <p>123 Golf Club Lane</p>
           <p>Chicago, IL 60601</p>
         </div>
         
         <!-- Navigation Links -->
-        <div class="flex-1 flex flex-col text-center md:text-left">
+        <div class="md:col-span-1 flex flex-col text-center md:text-left">
           <h2 class="text-xl font-bold">Quick Links</h2>
           <router-link to="/about" class="footer-link">About</router-link>
           <router-link to="/booking" class="footer-link">Book Now</router-link>
@@ -63,15 +74,16 @@
         </div>
         
         <!-- Hours & Contact -->
-        <div class="flex-1 text-center md:text-left">
+        <div class="md:col-span-1 text-center md:text-left">
           <h2 class="text-xl font-bold">Hours</h2>
-          <p>Mon-Sat: 9AM - 10PM</p>
-          <p>Sun: 10AM - 8PM</p>
+          <p class="font-bold text-lg">🏌️ 24/7 Access</p>
+          <p class="mt-2 text-gray-300">Corporate Hours:</p>
+          <p>Mon-Fri: 9 AM - 5 PM</p>
           <router-link to="/contact" class="btn mt-4 inline-block">Contact Now</router-link>
         </div>
         
         <!-- Social Media -->
-        <div class="flex-1 flex flex-col items-center md:items-end">
+        <div class="md:col-span-1 flex flex-col items-center md:items-end">
           <h2 class="text-xl font-bold">Follow Us</h2>
           <div class="flex space-x-4 mt-2">
             <a href="https://www.tiktok.com/@that_golf_place" target="_blank" class="social-icon">
@@ -110,14 +122,10 @@ export default {
     const dropdownOpen = ref(false);
     let closeTimer = null;
 
-    const toggleDropdown = () => {
-      dropdownOpen.value = !dropdownOpen.value;
-    };
-
     const startCloseTimer = () => {
       closeTimer = setTimeout(() => {
         dropdownOpen.value = false;
-      }, 300); // 300ms delay before closing
+      }, 300);
     };
 
     const cancelCloseTimer = () => {
@@ -128,7 +136,6 @@ export default {
 
     return {
       dropdownOpen,
-      toggleDropdown,
       startCloseTimer,
       cancelCloseTimer,
     };
@@ -145,14 +152,7 @@ export default {
   @apply block px-4 py-2 text-black hover:bg-gray-200 transition duration-300;
 }
 
-/* Prevents dropdown from being cut off */
-.absolute {
-  min-width: 200px;
-  white-space: nowrap;
-  transform-origin: top;
-}
-
-/* Keeps dropdown open when hovered */
+/* Dropdown Visibility */
 .opacity-0 {
   opacity: 0;
   visibility: hidden;
@@ -165,6 +165,7 @@ export default {
   transform: scale(1);
 }
 
+/* Footer Layout */
 .footer-link {
   @apply text-white hover:text-secondary transition duration-300 block mt-2;
 }
@@ -177,6 +178,7 @@ export default {
   @apply bg-white text-secondary shadow-lg;
 }
 
+/* Social Media Icons */
 .social-icon {
   @apply text-2xl text-white hover:text-secondary transition duration-300;
 }

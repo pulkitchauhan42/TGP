@@ -1,58 +1,81 @@
 <template>
-  <div class="container mx-auto py-12 px-6 max-w-3xl">
-    <h1 class="text-4xl font-serif font-bold text-primary mb-6 text-center">Contact Us</h1>
+  <div class="container mx-auto p-6">
+    <h1 class="text-3xl font-bold text-center text-gray-900 mb-6">Contact Us</h1>
 
-    <!-- Contact Info -->
-    <div class="text-center mb-10">
-      <p class="text-lg text-textDark">📞 Call us: <a href="tel:6304186267" class="text-secondary font-bold">630-418-6267</a></p>
-      <p class="text-lg text-textDark">📧 Email us: <a href="mailto:bookings@thatgolfplace.com" class="text-secondary font-bold">bookings@thatgolfplace.com</a></p>
-    </div>
+    <form @submit.prevent="submitContactForm" class="max-w-lg mx-auto bg-white p-6 shadow-lg rounded-lg border border-gray-300">
+      <h2 class="text-xl font-semibold mb-4 text-gray-800">Send us a message</h2>
 
-    <!-- Contact Form -->
-    <form @submit.prevent="submitForm" class="bg-white shadow-lg rounded-lg p-6">
-      <div class="mb-4">
-        <label class="block text-sm font-semibold text-textDark mb-1">Full Name</label>
-        <input v-model="form.name" type="text" required class="w-full border border-gray-300 rounded-md p-2">
-      </div>
+      <label for="name" class="block text-gray-700 font-semibold">Name:</label>
+      <input type="text" id="name" v-model="contact.name" class="input-field" required />
 
-      <div class="mb-4">
-        <label class="block text-sm font-semibold text-textDark mb-1">Email Address</label>
-        <input v-model="form.email" type="email" required class="w-full border border-gray-300 rounded-md p-2">
-      </div>
+      <label for="email" class="block text-gray-700 font-semibold mt-4">Email:</label>
+      <input type="email" id="email" v-model="contact.email" class="input-field" required />
 
-      <div class="mb-4">
-        <label class="block text-sm font-semibold text-textDark mb-1">Message</label>
-        <textarea v-model="form.message" required rows="4" class="w-full border border-gray-300 rounded-md p-2"></textarea>
-      </div>
+      <label for="message" class="block text-gray-700 font-semibold mt-4">Message:</label>
+      <textarea id="message" v-model="contact.message" rows="4" class="input-field" required></textarea>
 
-      <button type="submit" class="w-full bg-primary text-textLight py-2 rounded-md font-bold hover:bg-green-700 transition">
-        Send Message
-      </button>
+      <button type="submit" class="btn-submit mt-4">Send Message</button>
     </form>
+
+    <p v-if="successMessage" class="text-green-600 text-center font-semibold mt-4">{{ successMessage }}</p>
+    <p v-if="errorMessage" class="text-red-600 text-center font-semibold mt-4">{{ errorMessage }}</p>
   </div>
 </template>
 
 <script>
+import { ref } from "vue";
 import axios from "axios";
+
 export default {
-  data() {
-    return {
-      form: {
-        name: "",
-        email: "",
-        message: "",
-      },
-    };
-  },
-  methods: {
-    async submitForm() {
+  setup() {
+    const contact = ref({
+      name: "",
+      email: "",
+      message: "",
+    });
+
+    const successMessage = ref("");
+    const errorMessage = ref("");
+
+    const submitContactForm = async () => {
+      successMessage.value = "";
+      errorMessage.value = "";
+
       try {
-        await axios.post("http://localhost:8000/api/contact", new FormData(document.querySelector("form")));
-        this.$router.push("/contact-confirmation"); // Redirect to confirmation page
+        const response = await axios.post("http://localhost:8000/api/contact", new URLSearchParams({
+          name: contact.value.name,
+          email: contact.value.email,
+          message: contact.value.message,
+        }));
+
+        successMessage.value = response.data.message;
+        contact.value = { name: "", email: "", message: "" }; // Reset form after successful submission
       } catch (error) {
-        alert("Something went wrong. Please try again.");
+        console.error("❌ Contact form error:", error);
+        errorMessage.value = "Failed to send message. Please try again.";
       }
-    },
+    };
+
+    return {
+      contact,
+      submitContactForm,
+      successMessage,
+      errorMessage,
+    };
   },
 };
 </script>
+
+<style scoped>
+.container {
+  max-width: 600px;
+}
+
+.input-field {
+  @apply border border-gray-400 p-2 rounded w-full mt-2 text-gray-900 bg-white;
+}
+
+.btn-submit {
+  @apply w-full bg-blue-600 text-white py-2 rounded-lg font-bold hover:bg-blue-700 transition;
+}
+</style>

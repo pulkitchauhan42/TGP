@@ -7,6 +7,8 @@ import MembershipOverview from "../views/MembershipOverview.vue";
 import IndividualMemberships from "../views/IndividualMemberships.vue";
 import CorporateMemberships from "../views/CorporateMemberships.vue";
 import SeasonalMemberships from "../views/SeasonalMemberships.vue";
+import PaymentPage from "../views/PaymentPage.vue";
+import PaymentSuccess from "../views/PaymentSuccess.vue";
 
 const routes = [
   { path: "/", component: HomePage },
@@ -17,6 +19,8 @@ const routes = [
   { path: "/memberships/individual", component: IndividualMemberships },
   { path: "/memberships/corporate", component: CorporateMemberships },
   { path: "/memberships/seasonal", component: SeasonalMemberships },
+  { path: "/payment", name: PaymentPage, component: () => import("../views/PaymentPage.vue") },
+  { path: "/payment-success", component: PaymentSuccess },
 ];
 
 const router = createRouter({
