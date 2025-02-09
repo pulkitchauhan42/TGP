@@ -83,6 +83,7 @@ export default {
         });
 
         localStorage.setItem("authToken", response.data.access_token);
+        localStorage.setItem("userEmail", email.value);
         alert("Login successful!");
 
         // ✅ Instead of redirecting to payment, just refresh the page

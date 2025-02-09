@@ -12,18 +12,9 @@
       <p class="text-xl font-bold mt-4 text-gray-900">Total: ${{ totalPrice }}</p>
     </div>
 
-    <!-- Payment Form -->
-    <form v-if="!isMember" @submit.prevent="submitPayment" class="max-w-lg mx-auto bg-white p-6 shadow-lg rounded-lg border border-gray-300 mt-6">
-      <h2 class="text-xl font-semibold mb-4 text-gray-800">Payment Details</h2>
-
-      <!-- User Info (For Receipt) -->
-      <input type="email" v-model="userEmail" placeholder="Email Address" class="input-field" required />
-      <input type="text" v-model="userName" placeholder="Full Name" class="input-field" required />
-
-      <!-- Payment Details -->
-      <input type="text" placeholder="Card Number" class="input-field" required />
-      <input type="text" placeholder="MM/YY" class="input-field" required />
-      <input type="text" placeholder="CVC" class="input-field" required />
+    <!-- Payment Button -->
+    <div v-if="!isMember" class="max-w-lg mx-auto bg-white p-6 shadow-lg rounded-lg border border-gray-300 mt-6">
+      <h2 class="text-xl font-semibold mb-4 text-gray-800">Confirm Payment</h2>
 
       <!-- Waiver Agreement -->
       <div class="mt-4 flex items-center">
@@ -34,12 +25,12 @@
       </div>
 
       <!-- Confirm Payment -->
-      <button type="submit" class="btn-confirm mt-4" :disabled="!waiverAgreed">
+      <button @click="processPayment" class="btn-confirm mt-4" :disabled="!waiverAgreed">
         Pay ${{ totalPrice }}
       </button>
-    </form>
+    </div>
 
-    <!-- If user is a member, show confirmation instead of payment form -->
+    <!-- Member Confirmation (No Payment Required) -->
     <div v-if="isMember" class="text-center mt-6">
       <p class="text-green-700 font-bold">✅ Your booking has been confirmed! No payment is required for members.</p>
     </div>
@@ -48,12 +39,12 @@
 
 <script>
 import { ref, onMounted } from "vue";
-import { useRouter, useRoute } from "vue-router";
+import { useRoute } from "vue-router";
 import axios from "axios";
 
 export default {
   setup() {
-    const router = useRouter();
+
     const route = useRoute();
 
     const bookingLocation = ref("");
@@ -62,9 +53,7 @@ export default {
     const bookingDuration = ref(1);
     const totalPrice = ref(50);
     const waiverAgreed = ref(false);
-    const userEmail = ref("");
-    const userName = ref("");
-    const isMember = ref(false); // Track membership status
+    const isMember = ref(false);
 
     onMounted(() => {
       bookingLocation.value = route.query.location || "That Golf Place - Main Location";
@@ -89,40 +78,32 @@ export default {
       }
     });
 
-    const submitPayment = async () => {
+    const processPayment = async () => {
       if (!waiverAgreed.value) {
         alert("⚠️ You must agree to the waiver before proceeding.");
         return;
       }
 
-      console.log("✅ Payment Successful! Redirecting...");
+      const userEmail = localStorage.getItem("userEmail") || ""; // Ensure email exists
 
-      // Send Receipt Email
-      // try {
-      //  await axios.post("http://localhost:8000/api/send-receipt", new URLSearchParams({
-      //    email: userEmail.value,
-      //    name: userName.value,
-      //    location: bookingLocation.value,
-      //    date: bookingDate.value,
-      //    time: bookingTime.value,
-      //    duration: bookingDuration.value.toString(),
-      //    total: totalPrice.value.toString(),
-      //  }));
-      //  console.log("📧 Receipt email sent!");
-      ///} catch (error) {
-      //  console.error("❌ Error sending receipt email:", error);
-      // }
-
-      // Redirect to Payment Success Page
-      router.push({
-        path: "/payment-success",
-        query: {
-          location: bookingLocation.value,
+      if (!userEmail) {
+        alert("⚠️ Your email is missing. Please log in again.");
+        return;
+  }
+      try {
+        const response = await axios.post("http://127.0.0.1:8000/api/create-checkout-session", {
           date: bookingDate.value,
           time: bookingTime.value,
           duration: bookingDuration.value,
-        },
-      });
+          location: bookingLocation.value,
+          email: userEmail, // Retrieve stored email from login
+        });
+
+        window.location.href = response.data.checkout_url; // Redirect to Stripe Checkout
+      } catch (error) {
+        console.error("❌ Payment error:", error);
+        alert("Payment failed. Please try again.");
+      }
     };
 
     return {
@@ -132,10 +113,8 @@ export default {
       bookingDuration,
       totalPrice,
       waiverAgreed,
-      userEmail,
-      userName,
       isMember,
-      submitPayment,
+      processPayment,
     };
   },
 };
@@ -144,10 +123,6 @@ export default {
 <style scoped>
 .container {
   max-width: 600px;
-}
-
-.input-field {
-  @apply border border-gray-400 p-2 rounded w-full mt-2 text-gray-900 bg-white;
 }
 
 .btn-confirm {

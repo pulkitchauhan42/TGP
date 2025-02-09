@@ -1,5 +1,6 @@
 <template>
   <div>
+    <!-- ✅ Header -->
     <header class="bg-primary bg-opacity-10 backdrop-blur-md py-4 shadow-md fixed top-0 left-0 w-full z-50 transition duration-300">
       <nav class="flex justify-between items-center px-8 relative">
         <!-- Logo -->
@@ -15,15 +16,11 @@
           <router-link to="/booking" class="nav-link">Booking</router-link>
 
           <!-- Memberships Dropdown -->
-          <div class="relative">
+          <div class="relative" @mouseleave="closeDropdown">
             <button @click="toggleDropdown('membership')" class="nav-link flex items-center">
               Memberships <span class="ml-1">▼</span>
             </button>
-            <div
-              v-if="activeDropdown === 'membership'"
-              class="absolute left-0 mt-2 w-56 bg-white shadow-lg rounded-lg z-50 transition-opacity duration-300"
-              @mouseleave="closeDropdown"
-            >
+            <div v-if="activeDropdown === 'membership'" class="dropdown-menu">
               <router-link to="/memberships" class="dropdown-link">Membership Overview</router-link>
               <router-link to="/memberships/individual" class="dropdown-link">Individual Memberships</router-link>
               <router-link to="/memberships/corporate" class="dropdown-link">Corporate Memberships</router-link>
@@ -32,15 +29,11 @@
           </div>
 
           <!-- User Account Dropdown -->
-          <div class="relative" v-if="isAuthenticated">
+          <div class="relative" v-if="isAuthenticated" @mouseleave="closeDropdown">
             <button @click="toggleDropdown('account')" class="nav-link flex items-center">
               {{ fullName || "Account" }} <span class="ml-1">▼</span>
             </button>
-            <div
-              v-if="activeDropdown === 'account'"
-              class="absolute right-0 mt-2 w-56 bg-white shadow-lg rounded-lg z-50"
-              @mouseleave="closeDropdown"
-            >
+            <div v-if="activeDropdown === 'account'" class="dropdown-menu">
               <p v-if="user.is_member" class="p-3 text-green-600 font-semibold border-b">
                 <strong>Remaining Hours:</strong> {{ user.member_hours }} hrs
               </p>
@@ -56,9 +49,30 @@
       </nav>
     </header>
 
+    <!-- ✅ Main Content -->
     <main class="pt-20 p-6">
-      <router-view></router-view>
+      <router-view @profileUpdated="fetchUserData" />
     </main>
+
+    <!-- ✅ Footer with Grass Background & Social Links -->
+    <footer class="relative text-white">
+      <!-- Background Image -->
+      <img src="/grass.png" alt="Grass Background" class="absolute inset-0 w-full h-full object-cover" />
+
+      <!-- Footer Content -->
+      <div class="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center p-6">
+        <div class="text-center md:text-left">
+          <h2 class="text-xl font-bold">That Golf Place</h2>
+          <p class="text-sm">© {{ new Date().getFullYear() }} All Rights Reserved.</p>
+        </div>
+
+        <div class="flex space-x-6 mt-4 md:mt-0">
+          <a href="https://facebook.com" target="_blank" class="social-icon">🔵 Facebook</a>
+          <a href="https://twitter.com" target="_blank" class="social-icon">🔷 Twitter</a>
+          <a href="https://instagram.com" target="_blank" class="social-icon">📸 Instagram</a>
+        </div>
+      </div>
+    </footer>
   </div>
 </template>
 
@@ -70,8 +84,8 @@ export default {
   setup() {
     const isAuthenticated = ref(false);
     const user = ref({ email: "", is_member: false, member_hours: 0 });
-    const fullName = ref(localStorage.getItem("fullName") || ""); // ✅ Full Name
-    const activeDropdown = ref(null); // ✅ Track open dropdown
+    const fullName = ref(localStorage.getItem("fullName") || "Account");
+    const activeDropdown = ref(null);
 
     // Fetch user details
     const fetchUserData = async () => {
@@ -84,7 +98,7 @@ export default {
         });
         user.value = response.data;
         isAuthenticated.value = true;
-        fullName.value = localStorage.getItem("fullName") || response.data.full_name || "Account";
+        fullName.value = response.data.full_name || "Account";
       } catch (error) {
         console.error("Error fetching user data:", error);
         isAuthenticated.value = false;
@@ -113,7 +127,7 @@ export default {
       localStorage.removeItem("authToken");
       localStorage.removeItem("fullName");
       isAuthenticated.value = false;
-      fullName.value = "";
+      fullName.value = "Account";
       window.location.reload();
     };
 
@@ -127,25 +141,38 @@ export default {
       activeDropdown,
       toggleDropdown,
       closeDropdown,
+      fetchUserData, // ✅ Expose fetchUserData for dynamic updates
     };
   },
 };
 </script>
 
 <style scoped>
+/* ✅ Navigation Styling */
 .nav-link {
   @apply text-lg text-white hover:text-secondary transition duration-300;
 }
 
+/* ✅ Dropdown Menu */
+.dropdown-menu {
+  @apply absolute right-0 mt-2 w-56 bg-white shadow-lg rounded-lg z-50 transition-opacity duration-300;
+}
+
+/* ✅ Dropdown Links */
 .dropdown-link {
   @apply block px-4 py-2 text-black hover:bg-gray-200 transition duration-300;
 }
 
-.footer-link {
-  @apply text-white hover:text-secondary transition duration-300 block mt-2;
+/* ✅ Footer */
+footer {
+  height: 200px; /* Ensures proper height */
+  width: 100%;
+  position: relative;
+  overflow: hidden;
 }
 
+/* ✅ Social Media Icons */
 .social-icon {
-  @apply text-2xl text-white hover:text-secondary transition duration-300;
+  @apply text-lg font-semibold hover:text-gray-300 transition duration-300;
 }
 </style>
