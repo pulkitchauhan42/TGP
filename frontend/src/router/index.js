@@ -13,6 +13,7 @@ import LoginPage from "../views/LoginSignup.vue";
 import SignupPage from "../views/SignupPage.vue";
 import ManageBookings from "../views/ManageBookings.vue"; // ✅ Newly added
 import AccountSettings from "../views/AccountSettings.vue"; // ✅ Newly added
+import PaymentConfirmation from "../views/PaymentConfirmation.vue"
 
 const routes = [
   { path: "/", component: HomePage },
@@ -29,6 +30,7 @@ const routes = [
   { path: "/signup", component: SignupPage },
   { path: "/manage-bookings", component: ManageBookings, meta: { requiresAuth: true } }, // ✅ Protected Route
   { path: "/account-settings", component: AccountSettings, meta: { requiresAuth: true } }, // ✅ Protected Route
+  { path: "/payment-confirmation", component: PaymentConfirmation, meta: { requiresAuth: true } }, // ✅ Protected Route
 ];
 
 const router = createRouter({

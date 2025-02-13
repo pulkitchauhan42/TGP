@@ -91,28 +91,43 @@ export default {
     // Check if booking can be canceled (more than 12 hours away)
     const canCancel = (date, time) => {
       const bookingDateTime = dayjs(`${date} ${time}`, "YYYY-MM-DD h:mm A");
-      return bookingDateTime.diff(dayjs(), "hours") > 12;
+      return bookingDateTime.diff(dayjs(), "hours") > 24;
     };
 
     // Cancel Booking
     const cancelBooking = async (booking) => {
-      if (!confirm("Are you sure you want to cancel this booking?")) return;
+  if (!confirm("Are you sure you want to cancel this booking?")) return;
 
-      try {
-        const response = await axios.post(
-          "http://localhost:8000/api/cancel-booking",
-          { date: booking.date, time: booking.time, duration: booking.duration },
-          { headers: { Authorization: `Bearer ${localStorage.getItem("authToken")}` } }
-        );
+  try {
+    // Send DELETE request to backend
+    const response = await axios.delete(`http://localhost:8000/api/cancel-booking/${booking.location}/${booking.date}/${booking.time}`, {
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+      },
+    });
 
-        alert(response.data.message);
-        fetchUserData(); // Refresh remaining hours
-        fetchUserBookings(); // Refresh bookings list
-      } catch (error) {
-        console.error("❌ Error canceling booking:", error);
-        alert(error.response?.data?.detail || "Could not cancel booking.");
-      }
-    };
+    // Show success message
+    alert(response.data.message);
+
+    // Remove canceled booking from the bookings list (directly update the frontend state)
+    const index = bookings.value.findIndex(
+      (b) => b.date === booking.date && b.time === booking.time && b.location === booking.location
+    );
+    
+    if (index !== -1) {
+      bookings.value.splice(index, 1);  // Remove the canceled booking from the list
+    }
+
+    // Optionally, re-fetch user data and bookings (if you want to ensure data is synchronized with the backend)
+    fetchUserData(); // Refresh user data to reflect changes (e.g., updated hours for members)
+    fetchUserBookings(); // Refresh bookings list after cancellation
+
+  } catch (error) {
+    console.error("❌ Error canceling booking:", error);
+    alert(error.response?.data?.detail || "Could not cancel booking.");
+  }
+};
+
 
     onMounted(() => {
       fetchUserData();

@@ -16,8 +16,8 @@
           <router-link to="/booking" class="nav-link">Booking</router-link>
 
           <!-- Memberships Dropdown -->
-          <div class="relative" @mouseleave="closeDropdown">
-            <button @click="toggleDropdown('membership')" class="nav-link flex items-center">
+          <div class="relative" v-click-outside="closeDropdown">
+            <button class="nav-link flex items-center" @click="toggleDropdown('membership')">
               Memberships <span class="ml-1">▼</span>
             </button>
             <div v-if="activeDropdown === 'membership'" class="dropdown-menu">
@@ -29,8 +29,8 @@
           </div>
 
           <!-- User Account Dropdown -->
-          <div class="relative" v-if="isAuthenticated" @mouseleave="closeDropdown">
-            <button @click="toggleDropdown('account')" class="nav-link flex items-center">
+          <div class="relative" v-if="isAuthenticated" v-click-outside="closeDropdown">
+            <button class="nav-link flex items-center" @click="toggleDropdown('account')">
               {{ fullName || "Account" }} <span class="ml-1">▼</span>
             </button>
             <div v-if="activeDropdown === 'account'" class="dropdown-menu">
@@ -80,7 +80,14 @@
 import { ref, onMounted, watchEffect } from "vue";
 import axios from "axios";
 
+// Directive for click outside functionality
+// import { createApp } from "vue";
+import { vClickOutside } from "vue3-click-outside";
+
 export default {
+  directives: {
+    'click-outside': vClickOutside
+  },
   setup() {
     const isAuthenticated = ref(false);
     const user = ref({ email: "", is_member: false, member_hours: 0 });
@@ -105,6 +112,14 @@ export default {
       }
     };
 
+    // Watch for changes to user member_hours
+    watchEffect(() => {
+      if (user.value.is_member) {
+        // Update the dropdown dynamically when the hours change
+        // fullName.value = `Remaining Hours: ${user.value.member_hours} hrs`;
+      }
+    });
+
     // ✅ Automatically detect authentication state change
     watchEffect(() => {
       if (localStorage.getItem("authToken")) {
@@ -112,14 +127,19 @@ export default {
       }
     });
 
-    // Toggle dropdown visibility
-    const toggleDropdown = (dropdown) => {
-      activeDropdown.value = activeDropdown.value === dropdown ? null : dropdown;
+    // Open dropdown
+    const openDropdown = (dropdown) => {
+      activeDropdown.value = dropdown;
     };
 
-    // Close dropdowns
+    // Close dropdown
     const closeDropdown = () => {
       activeDropdown.value = null;
+    };
+
+    // Toggle dropdown
+    const toggleDropdown = (dropdown) => {
+      activeDropdown.value = activeDropdown.value === dropdown ? null : dropdown;
     };
 
     // Logout function
@@ -138,10 +158,12 @@ export default {
       user,
       fullName,
       logout,
-      activeDropdown,
-      toggleDropdown,
-      closeDropdown,
       fetchUserData, // ✅ Expose fetchUserData for dynamic updates
+      activeDropdown,
+      openDropdown,
+      closeDropdown,
+      toggleDropdown,
+      watchEffect
     };
   },
 };
@@ -155,7 +177,12 @@ export default {
 
 /* ✅ Dropdown Menu */
 .dropdown-menu {
-  @apply absolute right-0 mt-2 w-56 bg-white shadow-lg rounded-lg z-50 transition-opacity duration-300;
+  @apply absolute right-0 mt-2 w-56 bg-white shadow-lg rounded-lg z-50 transition-opacity duration-300 hidden;
+}
+
+/* ✅ Show dropdown on hover */
+.relative:hover .dropdown-menu {
+  @apply block;
 }
 
 /* ✅ Dropdown Links */

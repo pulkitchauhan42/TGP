@@ -12,6 +12,7 @@
           v-model="selectedDate" 
           @change="clearSelectionAndFetchBookedSlots" 
           class="border border-gray-300 p-2 rounded text-black cursor-pointer"
+          :min="minDate" 
         />
       </div>
 
@@ -72,6 +73,7 @@
 
 <script>
 import { ref, computed, onMounted, watch } from "vue";
+import { useRouter } from "vue-router";
 import axios from "axios";
 import dayjs from "dayjs";
 
@@ -82,11 +84,15 @@ export default {
     const locations = ref(["Main Facility - 123 Golf Club Ln, Chicago, IL 60601"]);
     const selectedSlots = ref([]);
     const bookedEpochs = ref(new Set());
+    const router = useRouter();
+    const minDate = computed(() => dayjs().format("YYYY-MM-DD"));
+    
+    // Get current date and time to block out past slots
 
-    // ✅ Format Selected Date for Display
+    // Format selected date for display
     const selectedDateFormatted = computed(() => dayjs(selectedDate.value).format("dddd, MMMM D, YYYY"));
 
-    // ✅ Generate 30-Minute Slots
+    // Generate 30-minute slots
     const generateSlots = (startHour, endHour) => {
       const slots = [];
       for (let hour = startHour; hour <= endHour; hour++) {
@@ -105,7 +111,7 @@ export default {
     const afternoonSlots = computed(() => generateSlots(12, 18));
     const nightSlots = computed(() => [...generateSlots(19, 23), ...generateSlots(0, 3)]);
 
-    // ✅ Fetch Booked Slots
+    // Fetch booked slots
     const fetchBookedSlots = async () => {
       bookedEpochs.value.clear();
       try {
@@ -126,19 +132,19 @@ export default {
     onMounted(fetchBookedSlots);
     watch(selectedDate, fetchBookedSlots);
 
-    // ✅ Clears Selection & Fetches Slots When Changing Date
+    // Clears selection and fetches booked slots when changing date
     const clearSelectionAndFetchBookedSlots = () => {
       selectedSlots.value = [];
       fetchBookedSlots();
     };
 
-    // ✅ Date Navigation
+    // Date navigation
     const changeDate = (days) => {
       selectedDate.value = dayjs(selectedDate.value).add(days, "day").format("YYYY-MM-DD");
       clearSelectionAndFetchBookedSlots();
     };
 
-    // ✅ Slot Selection (Toggle Click)
+    // Slot selection (toggle click)
     const toggleSlot = (slot) => {
       if (bookedEpochs.value.has(slot.epoch)) return;
 
@@ -163,19 +169,26 @@ export default {
       }
     };
 
-    // ✅ Slot Styling
+    // Slot styling with disabled/unclickable for past slots
     const slotClass = (slot) => {
-      return bookedEpochs.value.has(slot.epoch)
-        ? "bg-red-500 text-white cursor-not-allowed"
-        : selectedSlots.value.some((s) => s.epoch === slot.epoch)
+      const currentEpoch = Math.floor(Date.now() / 1000);  // Get the current timestamp
+      const isPastSlot = slot.epoch < currentEpoch;  // Check if the slot is in the past
+
+      if (bookedEpochs.value.has(slot.epoch) || isPastSlot) {
+        return isPastSlot 
+          ? "bg-gray-400 text-white cursor-not-allowed line-through"
+          : "bg-red-500 text-white cursor-not-allowed"; // Crossed out style for past slots
+      }
+
+      return selectedSlots.value.some((s) => s.epoch === slot.epoch)
         ? "bg-green-500 text-white"
         : "bg-gray-200 text-black cursor-pointer";
     };
 
-    // ✅ Total Duration
+    // Total duration
     const totalDuration = computed(() => (selectedSlots.value.length * 0.5).toFixed(1));
 
-    // ✅ Confirm Booking
+    // Confirm booking
     const confirmBooking = async () => {
       if (selectedSlots.value.length === 0) {
         alert("Please select at least one slot.");
@@ -201,23 +214,53 @@ export default {
           { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" } }
         );
 
-        alert(response.data.message);
-        selectedSlots.value = [];
-        fetchBookedSlots();
+        if (response.data.redirect_to_payment) {
+          const amountToPay = response.data.amount_to_pay;
+          const availableHours = response.data.available_hours;
+
+          // Redirect to confirmation page with the required data
+          router.push({
+            path: "/payment-confirmation",
+            query: {
+              location: selectedLocation.value,
+              date: selectedDate.value,
+              time: selectedSlots.value[0].label,
+              duration: (selectedSlots.value.length * 0.5).toString(),
+              amount: amountToPay,
+              availableHours: availableHours,
+              checkout_url: response.data.checkout_url,
+            },
+          });
+        } else {
+          alert("✅ Booking confirmed! No payment required.");
+        }
       } catch (error) {
         console.error("❌ Booking error:", error);
         alert(error.response?.data?.detail || "An error occurred while booking.");
       }
     };
 
-    return { selectedDate, selectedDateFormatted, changeDate, selectedLocation, locations, morningSlots, afternoonSlots, nightSlots, selectedSlots, bookedEpochs, toggleSlot, slotClass, confirmBooking, totalDuration, clearSelectionAndFetchBookedSlots };
+    return { 
+      selectedDate, 
+      selectedDateFormatted, 
+      changeDate, 
+      selectedLocation, 
+      locations, 
+      morningSlots, 
+      afternoonSlots, 
+      nightSlots, 
+      selectedSlots, 
+      bookedEpochs, 
+      toggleSlot, 
+      slotClass, 
+      confirmBooking, 
+      totalDuration, 
+      clearSelectionAndFetchBookedSlots ,
+      minDate
+    };
   },
 };
 </script>
-
-
-
-
 
 <style scoped>
 .scheduler-container {
