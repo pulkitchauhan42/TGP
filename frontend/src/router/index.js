@@ -14,6 +14,7 @@ import SignupPage from "../views/SignupPage.vue";
 import ManageBookings from "../views/ManageBookings.vue"; // ✅ Newly added
 import AccountSettings from "../views/AccountSettings.vue"; // ✅ Newly added
 import PaymentConfirmation from "../views/PaymentConfirmation.vue"
+import MemberPaymentPage from "../views/MemberPaymentPage.vue";
 
 const routes = [
   { path: "/", component: HomePage },
@@ -25,12 +26,13 @@ const routes = [
   { path: "/memberships/individual", component: IndividualMemberships },
   { path: "/memberships/corporate", component: CorporateMemberships },
   { path: "/memberships/seasonal", component: SeasonalMemberships },
-  { path: "/payment", component: PaymentPage, meta: { requiresAuth: true } },
+  { path: "/payment/non-member-payment", component: PaymentPage, meta: { requiresAuth: true } },
   { path: "/payment-success", component: PaymentSuccess },
   { path: "/signup", component: SignupPage },
   { path: "/manage-bookings", component: ManageBookings, meta: { requiresAuth: true } }, // ✅ Protected Route
   { path: "/account-settings", component: AccountSettings, meta: { requiresAuth: true } }, // ✅ Protected Route
   { path: "/payment-confirmation", component: PaymentConfirmation, meta: { requiresAuth: true } }, // ✅ Protected Route
+  { path: "/payment/member-payment", component: MemberPaymentPage, meta: { requiresAuth: true } }, // ✅ Protected Route
 ];
 
 const router = createRouter({

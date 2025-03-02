@@ -29,6 +29,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ✅ Password Hashing & OAuth2 Scheme (Using Argon2)
 ph = PasswordHasher()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/login")
@@ -108,7 +109,7 @@ def add_booking_to_slots(email: str, location: str, date: str, time: str, durati
     }
 
     booked_slots[location][date].append(new_booking)
-    print(f"✅ Booking added to booked_slots for {email} on {date} at {time}")
+    #print(f"✅ Booking added to booked_slots for {email} on {date} at {time}")
 
 # ✅ Get User's Bookings
 @app.get("/api/my-bookings")
@@ -146,6 +147,14 @@ users_db["member@example.com"] = {
     "member_hours": 1.0,
 }
 
+users_db["p@tgp.com"] = {
+    "email": "p@tgp.com",
+    "hashed_password": hash_password("p"),
+    "full_name": "Example Non-Member",
+    "is_member": False,
+    "member_hours": 0,
+}
+
 # ✅ Pydantic Models
 class PaymentRequest(BaseModel):
     date: str
@@ -153,6 +162,7 @@ class PaymentRequest(BaseModel):
     duration: float
     location: str
     email: EmailStr
+    amount: int
 
 class User(BaseModel):
     email: EmailStr
@@ -196,21 +206,28 @@ async def signup(
 @router.post("/api/create-checkout-session")
 async def create_checkout_session(payment_data: PaymentRequest):
     try:
+        # Validate the incoming data
+        print(f"Payment data received: {payment_data}")  # Debugging
+
+        # Ensure the amount is an integer (in cents)
+        if not payment_data.amount:
+            raise HTTPException(status_code=400, detail="Amount is required")
+
+        # Create the Stripe session
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             mode="payment",
             success_url="http://localhost:8081/payment-success?session_id={CHECKOUT_SESSION_ID}",
             cancel_url="http://localhost:8081/payment-cancel",
-            allow_promotion_codes=True,
             line_items=[
                 {
                     "price_data": {
                         "currency": "usd",
                         "product_data": {
                             "name": "Golf Simulator Booking",
-                            "description": f"Booking on {payment_data.date} at {payment_data.time} for {payment_data.duration} hours"
+                            "description": f"Booking on {payment_data.date} at {payment_data.time} for {payment_data.duration} hour(s)"
                         },
-                        "unit_amount": int(50 * payment_data.duration * 100),
+                        "unit_amount": payment_data.amount,  # Ensure amount is in cents
                     },
                     "quantity": 1,
                 }
@@ -220,12 +237,18 @@ async def create_checkout_session(payment_data: PaymentRequest):
                 "date": payment_data.date,
                 "time": payment_data.time,
                 "location": payment_data.location,
+                #"duration": "1.0",
                 "duration": str(payment_data.duration),
             },
         )
+
         return JSONResponse({"checkout_url": session.url})
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Error creating Stripe session: {e}")
+        raise HTTPException(status_code=500, detail="Error creating Stripe session.")
+
+
 
 
 # Handle Stripe webhook events
@@ -244,16 +267,39 @@ async def stripe_webhook(request: Request):
     # Handle checkout.session.completed (Payment Success)
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        email = session["customer_email"]
+        
+        # Ensure the metadata contains email and use it
+        email = session.get("customer_email", None)  # Retrieve email directly if available
+        if not email:
+            email = session["metadata"].get("email", None)  # Retrieve from metadata if not in customer_email
+
+        if not email:
+            raise HTTPException(status_code=400, detail="Email not found in session data")
+
         booking_date = session["metadata"]["date"]
         booking_time = session["metadata"]["time"]
         booking_duration = float(session["metadata"]["duration"])
         location = session["metadata"]["location"]
 
-        # Call the helper function to add the booking
+        # Proceed to deduct hours and add booking to slots
         try:
-            # Add the booking only after successful payment
+            user = users_db.get(email)
+            if user is None:
+                raise HTTPException(status_code=404, detail="User not found")
+
+            if user["is_member"]:
+                # Deduct hours if the user is a member
+                remaining_duration = booking_duration - user["member_hours"]
+                if remaining_duration > 0:
+                    # Deduct the paid amount for the hours
+                    users_db[email]["member_hours"] -= booking_duration  # Update member hours
+
+                    if users_db[email]["member_hours"] < 0:
+                        users_db[email]["member_hours"] = 0  # Set to 0 if it goes negative
+
+            # Add the booking to booked_slots
             add_booking_to_slots(email, location, booking_date, booking_time, booking_duration)
+
             return {"status": "success"}
         except HTTPException as e:
             return {"error": f"Error adding booking: {e.detail}"}
@@ -261,8 +307,6 @@ async def stripe_webhook(request: Request):
     # Handle other events like payment failure or expiration if necessary
 
     return {"status": "success"}
-
-
 
 
 # ✅ User Login
@@ -374,77 +418,8 @@ async def get_user_bookings(current_user: dict = Depends(get_current_user)):
 
     if not user_bookings:
         raise HTTPException(status_code=404, detail="No bookings found")
-
+    print(f"✅ Bookings found for {user_email}: {user_bookings}")
     return {"bookings": user_bookings}
-
-
-# ✅ Booking logic to handle member hours and Stripe redirection
-@app.post("/api/book")
-async def book_slot(
-    date: str = Form(...),
-    time: str = Form(...),
-    duration: float = Form(...),
-    location: str = Form(DEFAULT_LOCATION),
-    current_user: dict = Depends(get_current_user)
-):
-    """Book a time slot at the default location if it's available"""
-    print(f"📌 DEBUG: Booking attempt by {current_user['email']} for {date} at {time} ({duration} hours)")
-
-    now_epoch = int(datetime.now().timestamp())
-    epoch_start = datetime.strptime(f"{date} {time}", "%Y-%m-%d %I:%M %p").timestamp()
-
-    if epoch_start < now_epoch:
-        raise HTTPException(status_code=400, detail="Cannot book a past time.")
-
-    if location not in booked_slots:
-        booked_slots[location] = {}
-
-    if date not in booked_slots[location]:
-        booked_slots[location][date] = []
-
-    # Check if the slot is already booked
-    epoch_end = epoch_start + int(duration * 3600)
-    for booking in booked_slots[location][date]:
-        existing_start = booking["epoch_start"]
-        existing_end = existing_start + int(booking["duration"] * 3600)
-        if not (epoch_end <= existing_start or epoch_start >= existing_end):
-            raise HTTPException(status_code=400, detail="Time slot is already booked")
-
-    # 🛑 Check if the user is a member
-    if current_user["is_member"]:
-        if current_user["member_hours"] < duration:
-            remaining_duration = duration - current_user["member_hours"]
-            remaining_amount = remaining_duration * 50 * 100  # Assuming $50 per hour
-
-            return {
-                "message": "You don't have enough hours to complete this booking.",
-                "redirect_to_payment": True,
-                "amount_to_pay": remaining_amount,  # Return the amount to pay
-                "stripe_session_url": "/payment"  # URL for Stripe, adjust as needed
-            }
-        users_db[current_user["email"]]["member_hours"] -= duration
-        print(f"✅ DEBUG: {current_user['email']} booked using credits. Remaining: {users_db[current_user['email']]['member_hours']}")
-
-    new_booking = {
-        "email": current_user["email"],
-        "location": location,
-        "date": date,
-        "time": time,
-        "duration": duration,
-        "epoch_start": epoch_start,
-    }
-
-    booked_slots[location][date].append(new_booking)
-
-    return {
-        "message": "Booking request successful",
-        "redirect_to_payment": False,  # No need for payment if user has enough hours
-        "new_booking": new_booking  # This will be passed when payment is complete
-    }
-
-
-
-
 
 
 @app.delete("/api/cancel-booking/{location}/{date}/{time}")
@@ -487,3 +462,76 @@ async def cancel_booking(
     return {"message": "Booking successfully cancelled"}
 app.include_router(router)
 
+@app.post("/api/book")
+async def book_slot(
+    date: str = Form(...),
+    time: str = Form(...),
+    duration: float = Form(...),
+    location: str = Form(DEFAULT_LOCATION),
+    current_user: dict = Depends(get_current_user)
+):
+    """Book a time slot at the default location if it's available"""
+    print(f"📌 DEBUG: Booking attempt by {current_user['email']} for {date} at {time} ({duration} hours)")
+
+    now_epoch = int(datetime.now().timestamp())
+    epoch_start = datetime.strptime(f"{date} {time}", "%Y-%m-%d %I:%M %p").timestamp()
+
+    if epoch_start < now_epoch:
+        raise HTTPException(status_code=400, detail="Cannot book a past time.")
+
+    if location not in booked_slots:
+        booked_slots[location] = {}
+
+    if date not in booked_slots[location]:
+        booked_slots[location][date] = []
+
+    epoch_end = epoch_start + int(duration * 3600)
+    for booking in booked_slots[location][date]:
+        existing_start = booking["epoch_start"]
+        existing_end = existing_start + int(booking["duration"] * 3600)
+        if not (epoch_end <= existing_start or epoch_start >= existing_end):
+            raise HTTPException(status_code=400, detail="Time slot is already booked")
+
+    if current_user["is_member"]:
+        if current_user["member_hours"] >= duration:
+            users_db[current_user["email"]]["member_hours"] -= duration
+            print(f"✅ DEBUG: {current_user['email']} booked using credits. Remaining: {users_db[current_user['email']]['member_hours']}")
+
+            new_booking = {
+                "email": current_user["email"],
+                "location": location,
+                "date": date,
+                "time": time,
+                "duration": duration,
+                "epoch_start": epoch_start,
+            }
+
+            booked_slots[location][date].append(new_booking)
+
+            return {
+                "message": "Booking successful without payment.",
+                "redirect_to_payment": False,
+                "new_booking": new_booking
+            }
+        else:
+            remaining_duration = duration - current_user["member_hours"]
+            print(remaining_duration)
+            remaining_amount = remaining_duration * 50 * 100  # Convert to cents
+            
+            return {
+                "message": "You don't have enough hours to complete this booking.",
+                "redirect_to_payment": True,
+                "amount_to_pay": remaining_amount,
+                "available_hours": current_user["member_hours"],
+                "stripe_session_url": "/payment/member-payment"
+            }
+
+    else:
+        remaining_amount = duration * 50 * 100  # Full price for non-members in cents
+        
+        return {
+            "message": "You need to pay to complete the booking.",
+            "redirect_to_payment": True,
+            "amount_to_pay": remaining_amount,
+            "stripe_session_url": "/payment/non-member-payment"
+        }

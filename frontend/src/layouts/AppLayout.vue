@@ -1,12 +1,12 @@
 <template>
   <div>
     <!-- ✅ Header -->
-    <header class="bg-primary bg-opacity-10 backdrop-blur-md py-4 shadow-md fixed top-0 left-0 w-full z-50 transition duration-300">
+    <header class="bg-primary bg-opacity-10 backdrop-blur-md py-6 fixed top-0 left-0 w-full z-50 transition-all duration-300">
       <nav class="flex justify-between items-center px-8 relative">
         <!-- Logo -->
         <router-link to="/" class="flex items-center space-x-3">
-          <img src="/logo.png" alt="That Golf Place Logo" class="h-12">
-          <h1 class="text-secondary text-3xl font-serif">That Golf Place</h1>
+          <img src="/logo.png" alt="That Golf Place Logo" class="h-20"> <!-- Adjusted logo size -->
+          <h1 class="text-white text-3xl font-serif font-semibold">That Golf Place</h1> <!-- Adjusted font size -->
         </router-link>
 
         <!-- Navigation Links -->
@@ -15,22 +15,22 @@
           <router-link to="/about" class="nav-link">About</router-link>
           <router-link to="/booking" class="nav-link">Booking</router-link>
 
-          <!-- Memberships Dropdown -->
+          <!-- Membership Dropdown -->
           <div class="relative" v-click-outside="closeDropdown">
-            <button class="nav-link flex items-center" @click="toggleDropdown('membership')">
+            <button class="nav-link flex items-center text-white" @click="() =>toggleDropdown('membership')">
               Memberships <span class="ml-1">▼</span>
             </button>
-            <div v-if="activeDropdown === 'membership'" class="dropdown-menu">
+            <div v-if="activeDropdown === 'membership'" class="dropdown-menu" @mouseleave="closeDropdown">
               <router-link to="/memberships" class="dropdown-link">Membership Overview</router-link>
-              <router-link to="/memberships/individual" class="dropdown-link">Individual Memberships</router-link>
-              <router-link to="/memberships/corporate" class="dropdown-link">Corporate Memberships</router-link>
-              <router-link to="/memberships/seasonal" class="dropdown-link">Seasonal Memberships</router-link>
+              <router-link to="/memberships/individual" class="dropdown-link">Individual</router-link>
+              <router-link to="/memberships/corporate" class="dropdown-link">Corporate</router-link>
+              <router-link to="/memberships/seasonal" class="dropdown-link">Seasonal</router-link>
             </div>
           </div>
 
           <!-- User Account Dropdown -->
-          <div class="relative" v-if="isAuthenticated" v-click-outside="closeDropdown">
-            <button class="nav-link flex items-center" @click="toggleDropdown('account')">
+          <div class="relative" v-if="isAuthenticated" v-click-outside="closeDropdown" @mouseleave="closeDropdown">
+            <button class="nav-link flex items-center text-white" @click="() => toggleDropdown('account')">
               {{ fullName || "Account" }} <span class="ml-1">▼</span>
             </button>
             <div v-if="activeDropdown === 'account'" class="dropdown-menu">
@@ -43,163 +43,138 @@
             </div>
           </div>
 
-          <!-- Show Sign In Button if Not Logged In -->
-          <router-link v-else to="/login" class="nav-link">Sign In</router-link>
+          <!-- Sign In Button if Not Logged In -->
+          <router-link v-else to="/login" class="nav-link text-white">Sign In</router-link>
         </div>
       </nav>
     </header>
 
     <!-- ✅ Main Content -->
-    <main class="pt-20 p-6">
+    <main class="pt-24 p-8">
       <router-view @profileUpdated="fetchUserData" />
     </main>
 
-    <!-- ✅ Footer with Grass Background & Social Links -->
-    <footer class="relative text-white">
-      <!-- Background Image -->
-      <img src="/grass.png" alt="Grass Background" class="absolute inset-0 w-full h-full object-cover" />
-
-      <!-- Footer Content -->
-      <div class="relative z-10 max-w-6xl mx-auto flex flex-col md:flex-row justify-between items-center p-6">
-        <div class="text-center md:text-left">
-          <h2 class="text-xl font-bold">That Golf Place</h2>
-          <p class="text-sm">© {{ new Date().getFullYear() }} All Rights Reserved.</p>
+    <!-- ✅ Footer - Compact and Improved -->
+    <footer class="bg-primary bg-opacity-90 text-white py-6">
+      <div class="max-w-5xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-center md:text-left">
+        <!-- Left: Logo and Address -->
+        <div class="flex flex-col items-center md:items-start space-y-2">
+          <router-link to="/" class="flex items-center space-x-3">
+            <img src="/logo.png" alt="That Golf Place Logo" class="h-14">
+            <h1 class="text-secondary text-2xl font-serif font-semibold">That Golf Place</h1>
+          </router-link>
+          <p class="text-sm">123 Golf Club Ln, Chicago, IL 60601</p>
+          <p class="text-sm">(123) 456-7890 | contact@thatgolfplace.com</p>
         </div>
 
-        <div class="flex space-x-6 mt-4 md:mt-0">
-          <a href="https://facebook.com" target="_blank" class="social-icon">🔵 Facebook</a>
-          <a href="https://twitter.com" target="_blank" class="social-icon">🔷 Twitter</a>
-          <a href="https://instagram.com" target="_blank" class="social-icon">📸 Instagram</a>
+        <!-- Middle: Quick Links -->
+        <div class="flex flex-col space-y-2 mt-4 md:mt-0">
+          <h3 class="text-lg font-bold">Quick Links</h3>
+          <router-link to="/" class="text-white hover:text-gray-300 text-sm">Home</router-link>
+          <router-link to="/about" class="text-white hover:text-gray-300 text-sm">About</router-link>
+          <router-link to="/booking" class="text-white hover:text-gray-300 text-sm">Booking</router-link>
+          <router-link to="/memberships" class="text-white hover:text-gray-300 text-sm">Memberships</router-link>
+          <router-link to="/contact" class="text-white hover:text-gray-300 text-sm">Contact</router-link>
+        </div>
+
+        <!-- Right: Social Icons with Fixed Links -->
+        <div class="flex space-x-4 mt-4 md:mt-0">
+          <a href="https://www.facebook.com" target="_blank" class="social-icon" aria-label="Facebook">
+            <font-awesome-icon :icon="['fab', 'facebook-f']" />
+          </a>
+          <a href="https://www.x.com" target="_blank" class="social-icon" aria-label="xTwitter">
+            <font-awesome-icon :icon="['fab', 'x-twitter']" />
+          </a>
+          <a href="https://www.instagram.com" target="_blank" class="social-icon" aria-label="Instagram">
+            <font-awesome-icon :icon="['fab', 'instagram']" />
+          </a>
+          <a href="https://www.tiktok.com" target="_blank" class="social-icon" aria-label="TikTok">
+            <font-awesome-icon :icon="['fab', 'tiktok']" />
+          </a>
+          <a href="https://www.youtube.com" target="_blank" class="social-icon" aria-label="YouTube">
+            <font-awesome-icon :icon="['fab', 'youtube']" />
+          </a>
         </div>
       </div>
     </footer>
   </div>
 </template>
 
-<script>
-import { ref, onMounted, watchEffect } from "vue";
-import axios from "axios";
 
-// Directive for click outside functionality
-// import { createApp } from "vue";
-import { vClickOutside } from "vue3-click-outside";
+<script>
+import { library } from "@fortawesome/fontawesome-svg-core";
+import { faFacebookF, faInstagram, faTiktok, faYoutube, faXTwitter } from "@fortawesome/free-brands-svg-icons";
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+
+library.add(faFacebookF, faInstagram, faTiktok, faYoutube, faXTwitter);
 
 export default {
-  directives: {
-    'click-outside': vClickOutside
+  components: { FontAwesomeIcon },
+  data() {
+    return {
+      activeDropdown: null,
+      isAuthenticated: false,
+      fullName: '',
+      user: {}
+    };
   },
-  setup() {
-    const isAuthenticated = ref(false);
-    const user = ref({ email: "", is_member: false, member_hours: 0 });
-    const fullName = ref(localStorage.getItem("fullName") || "Account");
-    const activeDropdown = ref(null);
-
-    // Fetch user details
-    const fetchUserData = async () => {
+  methods: {
+    toggleDropdown(menu) {
+      this.activeDropdown = this.activeDropdown === menu ? null : menu;
+    },
+    closeDropdown(menu) {
+      this.activeDropdown = menu;
+    },
+    async fetchUserData() {
       const token = localStorage.getItem("authToken");
-      if (!token) return;
-
+      if (!token) {
+        this.isAuthenticated = false;
+        return;
+      }
       try {
-        const response = await axios.get("http://localhost:8000/api/me", {
+        const response = await fetch("http://127.0.0.1:8000/api/me", {
+          method: "GET",
           headers: { Authorization: `Bearer ${token}` },
         });
-        user.value = response.data;
-        isAuthenticated.value = true;
-        fullName.value = response.data.full_name || "Account";
+        const userData = await response.json();
+        if (response.ok) {
+          this.fullName = userData.full_name || "Account"; 
+          this.user = userData;
+          this.isAuthenticated = true;
+        } else {
+          this.isAuthenticated = false;
+        }
       } catch (error) {
         console.error("Error fetching user data:", error);
-        isAuthenticated.value = false;
+        this.isAuthenticated = false;
       }
-    };
-
-    // Watch for changes to user member_hours
-    watchEffect(() => {
-      if (user.value.is_member) {
-        // Update the dropdown dynamically when the hours change
-        // fullName.value = `Remaining Hours: ${user.value.member_hours} hrs`;
-      }
-    });
-
-    // ✅ Automatically detect authentication state change
-    watchEffect(() => {
-      if (localStorage.getItem("authToken")) {
-        fetchUserData();
-      }
-    });
-
-    // Open dropdown
-    const openDropdown = (dropdown) => {
-      activeDropdown.value = dropdown;
-    };
-
-    // Close dropdown
-    const closeDropdown = () => {
-      activeDropdown.value = null;
-    };
-
-    // Toggle dropdown
-    const toggleDropdown = (dropdown) => {
-      activeDropdown.value = activeDropdown.value === dropdown ? null : dropdown;
-    };
-
-    // Logout function
-    const logout = () => {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("fullName");
-      isAuthenticated.value = false;
-      fullName.value = "Account";
-      window.location.reload();
-    };
-
-    onMounted(fetchUserData);
-
-    return {
-      isAuthenticated,
-      user,
-      fullName,
-      logout,
-      fetchUserData, // ✅ Expose fetchUserData for dynamic updates
-      activeDropdown,
-      openDropdown,
-      closeDropdown,
-      toggleDropdown,
-      watchEffect
-    };
+    }
   },
+  mounted() {
+    this.fetchUserData(); // Fetch user info when component loads
+  }
 };
 </script>
 
+
 <style scoped>
-/* ✅ Navigation Styling */
 .nav-link {
-  @apply text-lg text-white hover:text-secondary transition duration-300;
+  @apply text-white hover:text-primary transition font-medium;
 }
 
-/* ✅ Dropdown Menu */
 .dropdown-menu {
-  @apply absolute right-0 mt-2 w-56 bg-white shadow-lg rounded-lg z-50 transition-opacity duration-300 hidden;
+  @apply absolute right-0 bg-gray-800 text-white shadow-lg rounded-lg mt-2 py-2 w-48;
 }
 
-/* ✅ Show dropdown on hover */
-.relative:hover .dropdown-menu {
-  @apply block;
-}
-
-/* ✅ Dropdown Links */
 .dropdown-link {
-  @apply block px-4 py-2 text-black hover:bg-gray-200 transition duration-300;
+  @apply block px-4 py-2 hover:bg-gray-600;
 }
 
-/* ✅ Footer */
-footer {
-  height: 200px; /* Ensures proper height */
-  width: 100%;
-  position: relative;
-  overflow: hidden;
+.footer-link:hover {
+  @apply text-primary;
 }
 
-/* ✅ Social Media Icons */
 .social-icon {
-  @apply text-lg font-semibold hover:text-gray-300 transition duration-300;
+  @apply text-gray-400 hover:text-white transition;
 }
 </style>

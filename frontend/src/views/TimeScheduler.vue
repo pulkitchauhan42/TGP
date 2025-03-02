@@ -190,55 +190,64 @@ export default {
 
     // Confirm booking
     const confirmBooking = async () => {
-      if (selectedSlots.value.length === 0) {
-        alert("Please select at least one slot.");
-        return;
-      }
+  if (selectedSlots.value.length === 0) {
+    alert("Please select at least one slot.");
+    return;
+  }
 
-      try {
-        const token = localStorage.getItem("authToken");
-        if (!token) {
-          alert("You are not logged in. Please sign in to book.");
-          return;
-        }
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      alert("You are not logged in. Please sign in to book.");
+      return;
+    }
 
-        const requestData = new URLSearchParams();
-        requestData.append("location", selectedLocation.value);
-        requestData.append("date", selectedDate.value);
-        requestData.append("time", selectedSlots.value[0].label);
-        requestData.append("duration", (selectedSlots.value.length * 0.5).toString());
+    const userEmail = localStorage.getItem("userEmail"); // Make sure the email is stored in localStorage
+    const amountToPay = 50 * (selectedSlots.value.length * 0.5); // Calculate the total amount in dollars
+    const amountToPayInCents = amountToPay * 100; // convert to cents
+    const requestData = new URLSearchParams();
+    requestData.append("location", selectedLocation.value);
+    requestData.append("date", selectedDate.value);
+    requestData.append("time", selectedSlots.value[0].label);
+    requestData.append("duration", (selectedSlots.value.length * 0.5).toString());
+    requestData.append("email", userEmail); // Ensure we pass the email here
 
-        const response = await axios.post(
-          "http://localhost:8000/api/book",
-          requestData,
-          { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" } }
-        );
+    const response = await axios.post(
+      "http://localhost:8000/api/book",
+      requestData,
+      { headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/x-www-form-urlencoded" } }
+    );
 
-        if (response.data.redirect_to_payment) {
-          const amountToPay = response.data.amount_to_pay;
-          const availableHours = response.data.available_hours;
+    if (response.data.redirect_to_payment) {
+      // Check if the user needs to be redirected to Stripe
+      const amount = response.data.amount_to_pay || amountToPay; // fallback to the calculated amount
+      const availableHours = response.data.available_hours;
 
-          // Redirect to confirmation page with the required data
-          router.push({
-            path: "/payment-confirmation",
-            query: {
-              location: selectedLocation.value,
-              date: selectedDate.value,
-              time: selectedSlots.value[0].label,
-              duration: (selectedSlots.value.length * 0.5).toString(),
-              amount: amountToPay,
-              availableHours: availableHours,
-              checkout_url: response.data.checkout_url,
-            },
-          });
-        } else {
-          alert("✅ Booking confirmed! No payment required.");
-        }
-      } catch (error) {
-        console.error("❌ Booking error:", error);
-        alert(error.response?.data?.detail || "An error occurred while booking.");
-      }
-    };
+      // Redirect to the appropriate payment page
+      router.push({
+        path: response.data.stripe_session_url, // Should be '/payment/member-payment' or '/payment/non-member-payment'
+        query: {
+          location: selectedLocation.value,
+          date: selectedDate.value,
+          time: selectedSlots.value[0].label,
+          duration: (selectedSlots.value.length * 0.5).toString(),
+          amount: amount,  // Pass the correct amount
+          availableHours: availableHours, // Pass available hours for member users
+        },
+      });
+      console.log('Amount to Pay (in cents): ', amountToPayInCents);
+
+    } else {
+      alert("✅ Booking confirmed! No payment required.");
+    }
+  } catch (error) {
+    console.error("❌ Booking error:", error);
+    alert(error.response?.data?.detail || "An error occurred while booking.");
+  }
+};
+
+
+
 
     return { 
       selectedDate, 
