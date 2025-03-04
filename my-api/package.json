@@ -1,0 +1,25 @@
+{
+	"name": "my-fastapi-backend",
+	"version": "0.0.0",
+	"private": true,
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev",
+		"start": "wrangler dev",
+		"test": "vitest"
+	},
+	"devDependencies": {
+		"@cloudflare/vitest-pool-workers": "^0.6.4",
+		"vitest": "~2.1.9",
+		"wrangler": "^3.111.0"
+	},
+	"dependencies": {
+		"bcryptjs": "^3.0.2",
+		"buffer": "^6.0.3",
+		"crypto": "^1.0.1",
+		"jsonwebtoken": "^9.0.2",
+		"stream": "^0.0.3",
+		"stripe": "^17.7.0",
+		"util": "^0.12.5"
+	}
+}

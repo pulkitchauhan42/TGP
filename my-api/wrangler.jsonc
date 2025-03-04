@@ -1,0 +1,22 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "my-fastapi-backend",
+	"main": "src/index.js",
+	"compatibility_date": "2025-02-24",
+  "compatibility_flags": ["nodejs_compat"],
+	"observability": {
+		"enabled": true
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "my-database",
+			"database_id": "c0c00d68-7892-4184-82cd-cf93f36a7425"
+		}
+	],
+	"vars": {
+		"STRIPE_SECRET_KEY": "sk_test_51Qqgt0GDywVPAglzIN2JzZNuqUvY3RKJw3stnDjgEKwaZfMpEZgDqDE00HW75t930ER656UbGg4IB1Si5pcMUyBq00MKMoSJzP",
+		"STRIPE_WEBHOOK_SECRET": "whsec_63ac89d79b2343ef5cb9d2ebf79b8667e3ef0639801230e692a50253af3234cf",
+		"JWT_SECRET": "6752b457e470c014db7ae58cea48b79c765ba485c30565f7b10b7b088c78722d"
+	}
+}
